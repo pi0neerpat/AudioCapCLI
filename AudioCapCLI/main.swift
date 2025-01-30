@@ -5,7 +5,7 @@ let logger = Logger(subsystem: "com.example.AudioCap", category: "Main")
 let kAppSubsystem = "com.example.AudioCap"
 
 func startRecording(audioProcessController: AudioProcessController) {
-    guard let process = audioProcessController.processes.first else {
+    guard let process = audioProcessController.processes.first(where: { $0.name.contains("Spotify") == true }) else {
         logger.error("No audio processes found.")
         exit(1)
     }
