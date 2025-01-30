@@ -1,9 +1,7 @@
-import SwiftUI
+import AVFoundation
 import AudioToolbox
 import OSLog
-import AVFoundation
 
-@Observable
 final class ProcessTap {
 
     typealias InvalidationHandler = (ProcessTap) -> Void
@@ -34,7 +32,6 @@ final class ProcessTap {
     @ObservationIgnored
     private(set) var activated = false
 
-    @MainActor
     func activate() {
         guard !activated else { return }
         activated = true
@@ -162,7 +159,6 @@ final class ProcessTap {
 
 }
 
-@Observable
 final class ProcessTapRecorder {
 
     let fileURL: URL
@@ -192,7 +188,6 @@ final class ProcessTapRecorder {
     @ObservationIgnored
     private var currentFile: AVAudioFile?
 
-    @MainActor
     func start() throws {
         logger.debug(#function)
         

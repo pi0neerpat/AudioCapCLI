@@ -33,7 +33,7 @@ struct RecordingView: View {
             }
         } header: {
             HStack {
-                RecordingIndicator(appIcon: recorder.process.icon, isRecording: recorder.isRecording)
+                RecordingIndicator( isRecording: recorder.isRecording)
 
                 Text(recorder.isRecording ? "Recording from \(recorder.process.name)" : "Ready to Record from \(recorder.process.name)")
                     .font(.headline)
