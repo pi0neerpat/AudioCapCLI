@@ -304,12 +304,28 @@ final class ProcessTapStandardOut {
         try tap.run(on: queue) { [weak self] inNow, inInputData, inInputTime, outOutputData, inOutputTime in
             guard let self else { return }
             do {
-                guard let buffer = AVAudioPCMBuffer(pcmFormat: format, bufferListNoCopy: inInputData, deallocator: nil) else {
-                    throw "Failed to create PCM buffer"
-                }
+                // Cast inInputData to UnsafeMutablePointer<AudioBufferList>
+                let mutableInputData = UnsafeMutablePointer<AudioBufferList>(mutating: inInputData)
+                
+                // Convert the mutableInputData to an UnsafeMutableAudioBufferListPointer
+                let audioBufferList = UnsafeMutableAudioBufferListPointer(mutableInputData)
 
-                let audioData = Data(buffer: UnsafeBufferPointer(start: buffer.int16ChannelData?.pointee, count: Int(buffer.frameLength)))
-                FileHandle.standardOutput.write(audioData)
+                // Iterate over the audio buffers
+                for audioBuffer in audioBufferList {
+                    // Ensure the buffer's mData is not nil
+                    guard let mData = audioBuffer.mData else {
+                        throw "AudioBuffer mData is nil"
+                    }
+
+                    // Create a Data object from the audio buffer
+                    let audioData = Data(bytes: mData, count: Int(audioBuffer.mDataByteSize))
+
+                    // For simplicity, we'll just print the first few bytes as an example
+//                    print("Audio Data (first 8 bytes): \(audioData.prefix(8).map { String(format: "%02x", $0) }.joined(separator: " "))")
+
+                    // Write raw audio data to standard output - in practice, this is mostly for debugging
+                    FileHandle.standardOutput.write(audioData)
+                }
             } catch {
                 self.logger.error("\(error, privacy: .public)")
             }
