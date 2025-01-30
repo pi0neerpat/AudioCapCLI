@@ -261,3 +261,65 @@ final class ProcessTapRecorder {
     }
 
 }
+
+final class ProcessTapStandardOut {
+
+    let process: AudioProcess
+    private let queue = DispatchQueue(label: "ProcessTapStandardOut", qos: .userInitiated)
+    private let logger: Logger
+
+    @ObservationIgnored
+    private weak var _tap: ProcessTap?
+
+    init(tap: ProcessTap) {
+        self.process = tap.process
+        self._tap = tap
+        self.logger = Logger(subsystem: kAppSubsystem, category: "\(String(describing: ProcessTapStandardOut.self))")
+    }
+
+    private var tap: ProcessTap {
+        get throws {
+            guard let _tap else { throw "Process tap unavailable" }
+            return _tap
+        }
+    }
+
+    func start() throws {
+        self.logger.debug(#function)
+
+        let tap = try tap
+
+        if !tap.activated { tap.activate() }
+
+        guard var streamDescription = tap.tapStreamDescription else {
+            throw "Tap stream description not available."
+        }
+
+        guard let format = AVAudioFormat(streamDescription: &streamDescription) else {
+            throw "Failed to create AVAudioFormat."
+        }
+
+        self.logger.info("Using audio format: \(format, privacy: .public)")
+
+        try tap.run(on: queue) { [weak self] inNow, inInputData, inInputTime, outOutputData, inOutputTime in
+            guard let self else { return }
+            do {
+                guard let buffer = AVAudioPCMBuffer(pcmFormat: format, bufferListNoCopy: inInputData, deallocator: nil) else {
+                    throw "Failed to create PCM buffer"
+                }
+
+                let audioData = Data(buffer: UnsafeBufferPointer(start: buffer.int16ChannelData?.pointee, count: Int(buffer.frameLength)))
+                FileHandle.standardOutput.write(audioData)
+            } catch {
+                self.logger.error("\(error, privacy: .public)")
+            }
+        } invalidationHandler: { [weak self] tap in
+            guard let self else { return }
+            self.handleInvalidation()
+        }
+    }
+
+    private func handleInvalidation() {
+        logger.debug(#function)
+    }
+}

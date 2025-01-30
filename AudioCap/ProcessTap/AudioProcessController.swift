@@ -45,13 +45,6 @@ final class AudioProcessController {
                 self.reload(apps: apps)
             }
             .store(in: &cancellables)
-        // Replace NSWorkspace usage
-//        getRunningApplications()
-//            .sink { [weak self] apps in
-//                guard let self else { return }
-//                self.reload(apps: apps)
-//            }
-//            .store(in: &cancellables)
     }
 
     fileprivate func reload(apps: [NSRunningApplication]) {
@@ -78,24 +71,6 @@ final class AudioProcessController {
         } catch {
             logger.error("Error reading process list: \(error, privacy: .public)")
         }
-    }
-
-    private func getRunningApplications() -> AnyPublisher<[ProcessInfo], Never> {
-        // Replace with a method to fetch running processes without AppKit
-        // For example, use `ps` command or similar
-        return Just([]).eraseToAnyPublisher()
-    }
-}
-
-private extension ProcessInfo {
-    var processIdentifier: pid_t {
-        // Return process identifier
-        return 0 // Placeholder
-    }
-
-    var name: String? {
-        // Return process name
-        return nil // Placeholder
     }
 }
 

@@ -25,6 +25,26 @@ func startRecording(audioProcessController: AudioProcessController) {
     }
 }
 
+func startStandardOutputCapture(audioProcessController: AudioProcessController) {
+    guard let process = audioProcessController.processes.first(where: { $0.name.contains("Spotify") == true }) else {
+        logger.error("No audio processes found.")
+        exit(1)
+    }
+
+    let tap = ProcessTap(process: process)
+    let recorder = ProcessTapStandardOut(tap: tap)
+
+    do {
+        try recorder.start()
+        print("Terminal output started. Press Enter to stop.")
+        _ = readLine()
+//        recorder.stop()
+        print("Terminal output stopped.")
+    } catch {
+        logger.error("Failed to start recording: \(error.localizedDescription, privacy: .public)")
+        exit(1)
+    }}
+
 Task { @MainActor in
     print("Initializing audio controllers...")
     let audioProcessController = AudioProcessController()
@@ -36,7 +56,8 @@ Task { @MainActor in
     if audioRecordingPermission.status == .authorized {
         print("Audio recording permission granted.")
         audioProcessController.activate()
-        startRecording(audioProcessController: audioProcessController)
+//        startRecording(audioProcessController: audioProcessController)
+        startStandardOutputCapture(audioProcessController: audioProcessController)
     } else {
         print("Audio recording permission denied.")
         exit(1)
