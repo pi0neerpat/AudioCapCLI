@@ -269,24 +269,40 @@
 		D77A1E062D4C118A007ADFF1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AudioCapCLI/AudioCapCLI.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = JSR83882MV;
 				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_PKGINFO_FILE = YES;
+				INFOPLIST_FILE = AudioCapCLI/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "";
 				MACOSX_DEPLOYMENT_TARGET = 14.2;
+				PRIVATE_HEADERS_FOLDER_PATH = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
+				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
 		};
 		D77A1E072D4C118A007ADFF1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AudioCapCLI/AudioCapCLI.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = JSR83882MV;
 				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_PKGINFO_FILE = YES;
+				INFOPLIST_FILE = AudioCapCLI/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "";
 				MACOSX_DEPLOYMENT_TARGET = 14.2;
+				PRIVATE_HEADERS_FOLDER_PATH = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
+				WRAPPER_EXTENSION = app;
 			};
 			name = Release;
 		};

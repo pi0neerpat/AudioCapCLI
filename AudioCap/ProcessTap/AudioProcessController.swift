@@ -57,7 +57,7 @@ final class AudioProcessController {
                     let pid: pid_t = try objectID.read(kAudioProcessPropertyPID, defaultValue: -1)
 
                     guard let app = apps.first(where: { $0.processIdentifier == pid }) else { return nil }
-                    
+
                     return AudioProcess(app: app, objectID: objectID)
                 } catch {
                     logger.warning("Failed to initialize process with object ID #\(objectID, privacy: .public): \(error, privacy: .public)")
@@ -67,7 +67,7 @@ final class AudioProcessController {
 
             self.processes = updatedProcesses
                 .sorted(by: { $0.name.localizedStandardCompare($1.name) == .orderedAscending })
-            print(self.processes)
+//            print(self.processes)
         } catch {
             logger.error("Error reading process list: \(error, privacy: .public)")
         }
