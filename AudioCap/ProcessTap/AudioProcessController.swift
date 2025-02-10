@@ -9,6 +9,18 @@ struct AudioProcess: Identifiable, Hashable {
     var name: String
     var bundleURL: URL?
     var objectID: AudioObjectID
+    var streamDescription: AudioStreamBasicDescription?
+
+    // Add Hashable conformance
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(name)
+    }
+
+    // Add Equatable conformance
+    static func == (lhs: AudioProcess, rhs: AudioProcess) -> Bool {
+        return lhs.id == rhs.id && lhs.name == rhs.name
+    }
 }
 
 extension AudioProcess {
@@ -78,11 +90,27 @@ private extension AudioProcess {
     init(app: NSRunningApplication, objectID: AudioObjectID) {
         let name = app.localizedName ?? app.bundleURL?.deletingPathExtension().lastPathComponent ?? app.bundleIdentifier?.components(separatedBy: ".").last ?? "Unknown \(app.processIdentifier)"
 
+        // Try to get the audio format by creating a temporary tap description
+        var streamDescription: AudioStreamBasicDescription?
+        do {
+            let tapDescription = CATapDescription(stereoMixdownOfProcesses: [objectID])
+            var tapID: AUAudioObjectID = .unknown
+            let err = AudioHardwareCreateProcessTap(tapDescription, &tapID)
+            if err == noErr {
+                streamDescription = try tapID.readAudioTapStreamBasicDescription()
+                // Clean up the temporary tap
+                _ = AudioHardwareDestroyProcessTap(tapID)
+            }
+        } catch {
+            print("Failed to read format: \(error)")
+        }
+
         self.init(
             id: app.processIdentifier,
             name: name,
             bundleURL: app.bundleURL,
-            objectID: objectID
+            objectID: objectID,
+            streamDescription: streamDescription
         )
     }
 }

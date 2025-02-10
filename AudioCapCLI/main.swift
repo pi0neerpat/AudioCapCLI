@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 import SwiftUI
+import CoreAudio
 
 let logger = Logger(subsystem: "com.example.AudioCap", category: "Main")
 let kAppSubsystem = "com.example.AudioCap"
@@ -11,6 +12,11 @@ func convertIconToBase64(_ icon: NSImage) -> String? {
     guard let pngData = bitmap.representation(using: .png, properties: [:]) else { return nil }
     
     return pngData.base64EncodedString() // No options for no line breaks
+}
+
+func formatDescription(_ format: AudioStreamBasicDescription?) -> String {
+    guard let format = format else { return "Unknown format" }
+    return String(format: "%.0f Hz, %d ch", format.mSampleRate, format.mChannelsPerFrame)
 }
 
 func listAvailableAudioProcesses() {
@@ -42,19 +48,22 @@ func listAvailableAudioProcesses() {
         let message = "Available audio processes:"
         logger.info("\(message)")
         for process in filteredProcesses {
-            logger.info("\(process.name)")
             let iconBase64 = convertIconToBase64(process.icon)
-            print("\(process.name)|\(iconBase64 ?? "No Icon")")
+            let format = formatDescription(process.streamDescription)
+            let message = ("\(process.name)|\(format)|\(iconBase64 ?? "No Icon")")
+            logger.info("\(process.name)|\(format), privacy: .public)")
+//            print(message)
+
         }
     }
 }
 
-func startRecording() {
+func startRecording(sourceName: String) {
     logger.debug("Starting audio recording...")
     let audioProcessController = AudioProcessController()
     audioProcessController.activate()
 
-    guard let process = audioProcessController.processes.first(where: { $0.name.contains("Spotify") }) else {
+    guard let process = audioProcessController.processes.first(where: { $0.name.contains(sourceName) }) else {
         logger.error("No audio processes available.")
         exit(1)
     }
@@ -70,8 +79,29 @@ func startRecording() {
     }
 }
 
-// Check for the presence of the "--list-processes" flag
-let shouldListProcesses = CommandLine.arguments.contains("--list-sources")
+func parseArguments(_ arguments: [String]) -> [String: String?] {
+    var argumentDict = [String: String?]()
+    var currentKey: String?
+
+    for argument in arguments {
+        if argument.hasPrefix("--") {
+            currentKey = String(argument.dropFirst(2))
+            argumentDict[currentKey!] = nil // Initialize key with nil value
+        } else if let key = currentKey {
+            argumentDict[key] = argument
+            currentKey = nil
+        }
+    }
+
+    return argumentDict
+}
+
+let argumentDict = parseArguments(CommandLine.arguments)
+
+let shouldListProcesses = argumentDict.keys.contains("list-sources")
+let sourceName = argumentDict["source"] ?? nil
+
+logger.debug("\(String(sourceName ?? "No source name provided."))")
 
 Task { @MainActor in
     logger.debug("Initializing audio controllers...")
@@ -86,8 +116,11 @@ Task { @MainActor in
         if shouldListProcesses {
             listAvailableAudioProcesses()
             exit(0)
+        } else if (sourceName != nil) {
+            startRecording(sourceName: String(sourceName ?? ""))
         } else {
-           startRecording()
+            logger.error("No source name provided.")
+            exit(1)
         }
     } else {
         logger.debug("Audio recording permission denied.")
