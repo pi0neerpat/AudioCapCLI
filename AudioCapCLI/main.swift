@@ -19,12 +19,11 @@ func formatDescription(_ format: AudioStreamBasicDescription?) -> String {
     return String(format: "%.0f Hz, %d ch", format.mSampleRate, format.mChannelsPerFrame)
 }
 
-func listAvailableAudioProcesses() {
+func getAvailableProcesses() -> [AudioProcess] {
     let audioProcessController = AudioProcessController()
     audioProcessController.activate()
     let processes = audioProcessController.processes
     
-    // Define a set of process names to exclude
     var excludedProcesses: Set<String> = [
         "PowerChime",
         "Terminal",
@@ -39,34 +38,37 @@ func listAvailableAudioProcesses() {
     excludedProcesses.insert(currentProcessName)
     
     // Filter the processes
-    let filteredProcesses = processes.filter { !excludedProcesses.contains($0.name) }
+    return processes.filter { !excludedProcesses.contains($0.name) }
+}
+
+func listAvailableAudioProcesses() {
+    let processes = getAvailableProcesses()
     
-    if filteredProcesses.isEmpty {
+    if processes.isEmpty {
         let message = "No audio processes available."
         logger.info("\(message)")
     } else {
         let message = "Available audio processes:"
         logger.info("\(message)")
-        for process in filteredProcesses {
+        for process in processes {
             let iconBase64 = convertIconToBase64(process.icon)
             let format = formatDescription(process.streamDescription)
             let message = ("\(process.name)|\(format)|\(iconBase64 ?? "No Icon")")
             logger.info("\(process.name)|\(format), privacy: .public)")
             print(message)
-
         }
     }
 }
 
 func startRecording(sourceName: String) {
     logger.debug("Starting audio recording...")
-    let audioProcessController = AudioProcessController()
-    audioProcessController.activate()
-
-    guard let process = audioProcessController.processes.first(where: { $0.name.contains(sourceName) }) else {
-        logger.error("No audio processes available.")
+    let processes = getAvailableProcesses()
+    
+    guard let process = processes.first(where: { $0.name.contains(sourceName) }) else {
+        logger.error("No matching audio process found for source: \(sourceName)")
         exit(1)
     }
+    
     let tap = ProcessTap(process: process)
     let recorder = ProcessTapStandardOut(tap: tap)
     
@@ -125,8 +127,8 @@ Task { @MainActor in
         if shouldListProcesses {
             listAvailableAudioProcesses()
             exit(0)
-        } else if (sourceName != nil) {
-            startRecording(sourceName: String(sourceName ?? ""))
+        } else if let sourceName = sourceName {
+            startRecording(sourceName: sourceName)
         } else {
             logger.error("No source name provided.")
             exit(1)
