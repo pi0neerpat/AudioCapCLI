@@ -44,7 +44,8 @@ func formatDescription(_ format: AudioStreamBasicDescription?) -> String {
         "universalaccessd",
         "Mail Graphics and Media",
         "Unknown",
-        "(Plugin)"
+        "(Plugin)",
+        "AudioCapCLI"
     ]
     
     // Get the current process name and add it to the excluded list
