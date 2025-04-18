@@ -47,10 +47,40 @@ extension AudioProcess.Kind {
 
 extension AudioProcess {
     var icon: NSImage {
-        guard let bundleURL else { return kind.defaultIcon }
-        let image = NSWorkspace.shared.icon(forFile: bundleURL.path)
-        image.size = NSSize(width: 32, height: 32)
-        return image
+        // For non-browser helpers - use direct bundleURL
+        if let bundleURL = bundleURL, bundleID.map(isBrowserHelper) != true {
+            let image = NSWorkspace.shared.icon(forFile: bundleURL.path)
+            image.size = NSSize(width: 32, height: 32)
+            return image
+        }
+        
+        // For browser helpers - map to main app
+        if let bundleID = bundleID, let mainAppBundleID = helperToMainAppBundleID(bundleID),
+           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: mainAppBundleID) {
+            let image = NSWorkspace.shared.icon(forFile: appURL.path)
+            image.size = NSSize(width: 32, height: 32)
+            return image
+        }
+        
+        // Fall back to default icon if all else fails
+        return kind.defaultIcon
+    }
+    
+    // Function to check if a bundle ID belongs to a known browser helper
+    private func isBrowserHelper(_ bundleID: String) -> Bool {
+        return bundleID.contains(".helper") || bundleID.contains("WebKit.GPU")
+    }
+    
+    // Map helper bundle IDs to their main application bundle IDs
+    private func helperToMainAppBundleID(_ bundleID: String) -> String? {
+        let mapping: [String: String] = [
+            "com.google.Chrome.helper": "com.google.Chrome",
+            "com.brave.Browser.helper": "com.brave.Browser",
+            "company.thebrowser.browser.helper": "company.thebrowser.browser",
+            "com.apple.WebKit.GPU": "com.apple.Safari",
+        ]
+        
+        return mapping[bundleID]
     }
 }
 
