@@ -74,8 +74,11 @@ func formatDescription(_ format: AudioStreamBasicDescription?) -> String {
     
     // Filter the processes
     return processes.filter { process in
-        // Check if process name is not in the excluded list
-        let nameNotExcluded = !excludedProcessNames.contains(process.name)
+        // Check if process name doesn't contain excluded substrings
+        let nameNotExcluded = !excludedProcessNames.contains { excludedName in
+            process.name == excludedName || // Exact match
+            process.name.contains(excludedName) // Contains substring
+        }
         
         // Check if bundle ID is not in the excluded list
         let bundleIDNotExcluded = process.bundleID.map { 
