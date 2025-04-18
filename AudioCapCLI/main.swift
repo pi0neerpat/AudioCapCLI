@@ -6,6 +6,21 @@ import CoreAudio
 let logger = Logger(subsystem: "com.example.AudioCap", category: "Main")
 let kAppSubsystem = "com.example.AudioCap"
 
+func printUsage() {
+    print("""
+    AudioCapCLI - Capture audio from applications
+    
+    Usage:
+      AudioCapCLI --list-sources                List all available audio sources
+      AudioCapCLI --source <name>               Record audio from specified source
+    
+    Examples:
+      AudioCapCLI --list-sources
+      AudioCapCLI --source Chrome
+      AudioCapCLI --source "com.google.Chrome"
+    """)
+}
+
 func convertIconToBase64(_ icon: NSImage) -> String? {
     guard let tiffData = icon.tiffRepresentation else { return nil }
     guard let bitmap = NSBitmapImageRep(data: tiffData) else { return nil }
@@ -19,29 +34,60 @@ func formatDescription(_ format: AudioStreamBasicDescription?) -> String {
     return String(format: "%.0f Hz, %d ch", format.mSampleRate, format.mChannelsPerFrame)
 }
 
-func getAvailableProcesses() -> [AudioProcess] {
+@MainActor func getAvailableProcesses() -> [AudioProcess] {
     let audioProcessController = AudioProcessController()
     audioProcessController.activate()
     let processes = audioProcessController.processes
     
-    var excludedProcesses: Set<String> = [
-        "PowerChime",
-        "Terminal",
+    // Process names to exclude
+    var excludedProcessNames: Set<String> = [
         "universalaccessd",
-        "loginwindow",
-        "Control Center",
-        "Accessibility Services"
+        "Mail Graphics and Media",
+        "Unknown",
+        "(Plugin)"
     ]
     
     // Get the current process name and add it to the excluded list
     let currentProcessName = ProcessInfo.processInfo.processName
-    excludedProcesses.insert(currentProcessName)
+    excludedProcessNames.insert(currentProcessName)
+    
+    // Bundle IDs to exclude
+    let excludedBundleIDs: Set<String> = [
+        "com.apple.controlcenter",
+        "com.apple.loginwindow",
+        "com.apple.PowerChime",
+        "com.apple.Terminal",
+        "com.apple.mail",
+        "com.apple.accessibility.AXVisualSupportAgent",
+        "com.apple.cloudpaird",
+        "com.apple.AirPlayXPCHelper",
+        "com.apple.avconferenced",
+        "com.apple.audiomxd",
+        "com.apple.cmio.ContinuityCaptureAgent",
+        "com.apple.mediaanalysisd",
+        "com.apple.mediaremoted",
+        "systemsoundserverd",
+        "com.apple.accessibility.heard",
+        "com.apple.CoreSpeech",
+        "com.apple.TelephonyUtilities"
+    ]
     
     // Filter the processes
-    return processes.filter { !excludedProcesses.contains($0.name) }
+    return processes.filter { process in
+        // Check if process name is not in the excluded list
+        let nameNotExcluded = !excludedProcessNames.contains(process.name)
+        
+        // Check if bundle ID is not in the excluded list
+        let bundleIDNotExcluded = process.bundleID.map { 
+            !excludedBundleIDs.contains($0) 
+        } ?? true // If bundleID is nil, consider it not excluded
+        
+        // Include only processes that pass both filters
+        return nameNotExcluded && bundleIDNotExcluded
+    }
 }
 
-func listAvailableAudioProcesses() {
+@MainActor func listAvailableAudioProcesses() {
     let processes = getAvailableProcesses()
     
     if processes.isEmpty {
@@ -52,19 +98,36 @@ func listAvailableAudioProcesses() {
         logger.info("\(message)")
         for process in processes {
             let iconBase64 = convertIconToBase64(process.icon)
+            let kind = process.kind.rawValue
+            let audioActive = process.audioActive ? "Active" : "Inactive"
             let format = formatDescription(process.streamDescription)
             let message = ("\(process.name)|\(format)|\(iconBase64 ?? "No Icon")")
-            logger.info("\(process.name)|\(format), privacy: .public)")
+            logger.info("\(process.name)|\(format)|\(kind) \(audioActive)|\(process.bundleID ?? "no bundle ID")")
             print(message)
         }
     }
 }
 
-func startRecording(sourceName: String) {
+@MainActor func startRecording(sourceName: String) {
     logger.debug("Starting audio recording...")
     let processes = getAvailableProcesses()
     
-    guard let process = processes.first(where: { $0.name.contains(sourceName) }) else {
+    // Try to find a process by exact name match first
+    var selectedProcess = processes.first(where: { $0.name == sourceName })
+    
+    // If no exact match, try partial name match
+    if selectedProcess == nil {
+        selectedProcess = processes.first(where: { $0.name.localizedCaseInsensitiveContains(sourceName) })
+    }
+    
+    // If still no match, try by bundle ID
+    if selectedProcess == nil {
+        selectedProcess = processes.first(where: { 
+            $0.bundleID?.localizedCaseInsensitiveContains(sourceName) == true 
+        })
+    }
+    
+    guard let process = selectedProcess else {
         logger.error("No matching audio process found for source: \(sourceName)")
         exit(1)
     }
@@ -112,6 +175,12 @@ func parseArguments(_ arguments: [String]) -> [String: String?] {
 Task { @MainActor in
     let argumentDict = parseArguments(CommandLine.arguments)
     
+    // If no arguments, show usage
+    if CommandLine.arguments.count == 1 {
+        printUsage()
+        exit(0)
+    }
+    
     let shouldListProcesses = argumentDict["list-sources"] != nil
     let sourceName = argumentDict["source"] ?? nil
     
@@ -131,6 +200,7 @@ Task { @MainActor in
             startRecording(sourceName: sourceName)
         } else {
             logger.error("No source name provided.")
+            printUsage()
             exit(1)
         }
     } else {

@@ -22,7 +22,7 @@ struct RootView: View {
     private var requestPermissionView: some View {
         LabeledContent("Please Allow Audio Recording") {
             Button("Allow") {
-                permission.request()
+                permission.request(completion: <#() -> Void#>)
             }
         }
     }

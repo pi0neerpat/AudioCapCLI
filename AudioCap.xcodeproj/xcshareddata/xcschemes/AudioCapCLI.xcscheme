@@ -59,6 +59,10 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
+            argument = "--source Brave"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
             argument = "--list-sources"
             isEnabled = "YES">
          </CommandLineArgument>

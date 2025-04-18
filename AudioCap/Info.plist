@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Please allow access in order to capture audio from your microphone.</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Please allow access in order to capture audio from other apps.</string>
 </dict>
