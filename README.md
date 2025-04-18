@@ -1,42 +1,128 @@
-# AudioCap
+# AudioCapCLI
+
+A command-line interface for capturing audio from applications on macOS, forked from [insidegui/AudioCap](https://github.com/insidegui/AudioCap).
+
+## Overview
+
+AudioCapCLI converts the original AudioCap GUI application into a command-line tool that can be integrated with other applications. This CLI version makes it easy to programmatically:
+
+- List available audio sources
+- Capture audio from specific applications
+- Stream the captured audio to stdout for further processing
+
+## Usage
+
+```
+AudioCapCLI - Capture audio from applications
+
+Usage:
+  AudioCapCLI --list-sources                List all available audio sources
+  AudioCapCLI --source <name>               Record audio from specified source
+
+Examples:
+  AudioCapCLI --list-sources
+  AudioCapCLI --source Chrome
+  AudioCapCLI --source "com.google.Chrome"
+```
+
+### Listing Available Sources
+
+```bash
+AudioCapCLI --list-sources
+```
+
+This will output a list of available audio sources in the format:
+```
+AppName|48000 Hz, 2 ch|Base64EncodedIcon
+```
+
+### Capturing Audio
+
+```bash
+AudioCapCLI --source "Chrome"
+```
+
+This will capture audio from the specified source and stream it to stdout as raw PCM audio data. The audio capture continues until you interrupt the process (e.g., with Ctrl+C).
+
+You can specify the source by:
+- Application name (e.g., "Chrome")
+- Partial application name (e.g., "Fire" would match "Firefox")
+- Bundle ID (e.g., "com.google.Chrome")
+
+## Integration Example
+
+Below is an example of how to integrate AudioCapCLI with Node.js from a real implementation:
+
+```javascript
+// List available audio sources
+const listSourcesProcess = child_process.spawn(AUDIO_CAPTURE_EXE_PATH, [
+  "--list-sources",
+]);
+
+let sourcesData = "";
+listSourcesProcess.stdout.on("data", (data) => {
+  sourcesData += data.toString();
+});
+
+// Parse sources output
+const sources = sourcesData
+  .split("\n")
+  .filter((line) => line.trim())
+  .map((line) => {
+    const [fullName, formatStr, icon] = line.split("|");
+    const formatMatch = formatStr
+      ? formatStr.match(/(\d+)\s*Hz,\s*(\d+)\s*ch/)
+      : null;
+    return {
+      id: fullName.trim(),
+      name: fullName.trim(),
+      sampleRate: formatMatch ? parseInt(formatMatch[1]) : 44100,
+      channels: formatMatch ? parseInt(formatMatch[2]) : 2,
+      icon: icon ? icon.trim() : null,
+    };
+  });
+
+// Start audio capture
+const systemAudioCapturer = child_process.spawn(
+  AUDIO_CAPTURE_EXE_PATH,
+  ["--source", sourceId]
+);
+
+// Process the raw audio data
+systemAudioCapturer.stdout.on("data", (chunk) => {
+  // Process the PCM audio data
+  // ...
+});
+```
+
+## Original AudioCap Project
+
+This CLI tool is based on [AudioCap by Guilherme Rambo](https://github.com/insidegui/AudioCap), which provides a GUI for the same functionality. The original project documentation below gives additional context about the CoreAudio APIs used.
+
+---
+
+## How It Works
 
 With macOS 14.4, Apple introduced new API in CoreAudio that allows any app to capture audio from other apps or the entire system, as long as the user has given the app permission to do so.
 
-Unfortunately this new API is poorly documented and the nature of CoreAudio makes it really hard to figure out exactly how to set things up so that your app can use this new functionality.
-
-This project is provided as documentation for this new API to help developers of audio apps.
-
-https://github.com/insidegui/AudioCap/assets/67184/95d72d1f-a4d6-4544-9d2f-a2ab99507cfc
-
-## API Description
-
-Here’s a brief summary of the new API added in macOS 14.4 and how to put everything together.
-
 ### Permission
 
-As you’d expect, recording audio from other apps or the entire system requires a permission prompt.
-
-The message for this prompt is defined by adding the `NSAudioCaptureUsageDescription` key to the app’s Info.plist. This key is not listed in the Xcode dropdown, you have to enter it manually. 
-
-There’s no public API to request audio recording permission or to check if the app has that permission. This project implements permission check/request using private API from the TCC framework, but there is a build-time flag to disable private API usage, in which case the permission will be requested the first time audio recording is started in the app.
+Recording audio from other apps requires a permission prompt. The message for this prompt is defined by adding the `NSAudioCaptureUsageDescription` key to the app's Info.plist.
 
 ### Process Tap Setup
 
-Assuming the app has audio recording permission, setting up and recording audio from other apps can be done by performing the following steps:
+The CLI tool uses the following process:
+1. Retrieves a list of available audio processes
+2. Filters out system processes that typically don't produce useful audio
+3. For a selected process, creates an audio tap and streams the audio data to stdout
+4. The raw PCM audio data can then be processed by downstream applications
 
-- Get the PID of the process you wish to capture
-- Use [kAudioHardwarePropertyTranslatePIDToProcessObject](https://developer.apple.com/documentation/coreaudio/kaudiohardwarepropertytranslatepidtoprocessobject) to translate the PID into an `AudioObjectID`
-- Create a [CATapDescription](https://developer.apple.com/documentation/coreaudio/catapdescription) for the object ID above, and set (or just get) its `uuid` property, which will be needed later
-- Call [AudioHardwareCreateProcessTap](https://developer.apple.com/documentation/coreaudio/4160724-audiohardwarecreateprocesstap) with the tap description to create the tap, which gets its own `AudioObjectID`
-- Create a dictionary for your aggregate device that includes `[kAudioSubTapUIDKey: <your tap description uuid string>]` in its `kAudioAggregateDeviceTapListKey` (you probably want to configure other things, such as setting `kAudioAggregateDeviceIsPrivateKey` to true so that it doesn’t show up globally)
-- Call [AudioHardwareCreateAggregateDevice](https://developer.apple.com/documentation/coreaudio/1422096-audiohardwarecreateaggregatedevi) with the dictionary above
-- Read `kAudioTapPropertyFormat` from the process tap to get its `AudioStreamBasicDescription`, then create an `AVAudioFormat` matching the description, this will be needed later
-- Create an `AVAudioFile` for writing with your desired settings
-- Call `AudioDeviceCreateIOProcIDWithBlock` to set up a callback for your aggregate device
-- Inside the callback, create an `AVAudioPCMBuffer` passing in your format; you can use `bufferListNoCopy` with `nil` deallocator then just call `write(from:)` on your audio file, passing in the buffer
-- Call `AudioDeviceStart` with the aggregate device and IO proc ID
-- Remember to call all your `Audio...Stop` and `Audio...Destroy` cleanup functions
-- Let the `AVAudioFile` deinit to close it
-- Now you have an audio file with a recording from the system or app
+## Requirements
 
-Thanks to [@WFT](https://github.com/WFT) for helping me with this project.
+- macOS 14.4 or later
+- Audio recording permission
+
+## Credits
+
+- Original AudioCap by [Guilherme Rambo](https://github.com/insidegui)
+- CLI adaptation by [PI0neerpat](https://github.com/pi0neerpat)
