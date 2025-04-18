@@ -15,3 +15,6 @@ DerivedData
 .idea/
 Provisioning
 Build/
+.env
+dist/
+AudioCapCLI*/

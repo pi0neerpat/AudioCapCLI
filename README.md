@@ -49,6 +49,10 @@ You can specify the source by:
 - Partial application name (e.g., "Fire" would match "Firefox")
 - Bundle ID (e.g., "com.google.Chrome")
 
+## Release Notes
+
+See [RELEASE_NOTES.md](./RELEASE_NOTES.md) for details about the latest release and planned features.
+
 ## Integration Example
 
 Below is an example of how to integrate AudioCapCLI with Node.js from a real implementation:
