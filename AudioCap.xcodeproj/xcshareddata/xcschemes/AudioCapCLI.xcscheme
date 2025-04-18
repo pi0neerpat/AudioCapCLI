@@ -5,7 +5,7 @@
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
-      buildArchitectures = "Automatic">
+      buildArchitectures = "All">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Debug"
+      buildConfiguration = "Release"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -56,11 +56,11 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "--source Spotify"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "--list-sources"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
    </LaunchAction>

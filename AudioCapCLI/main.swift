@@ -52,7 +52,7 @@ func listAvailableAudioProcesses() {
             let format = formatDescription(process.streamDescription)
             let message = ("\(process.name)|\(format)|\(iconBase64 ?? "No Icon")")
             logger.info("\(process.name)|\(format), privacy: .public)")
-//            print(message)
+            print(message)
 
         }
     }
@@ -82,28 +82,37 @@ func startRecording(sourceName: String) {
 func parseArguments(_ arguments: [String]) -> [String: String?] {
     var argumentDict = [String: String?]()
     var currentKey: String?
-
-    for argument in arguments {
+    
+    let args = Array(arguments.dropFirst())
+    
+    for (index, argument) in args.enumerated() {
         if argument.hasPrefix("--") {
-            currentKey = String(argument.dropFirst(2))
-            argumentDict[currentKey!] = nil // Initialize key with nil value
+            let key = String(argument.dropFirst(2))
+            
+            // Check if this is the last argument or if the next argument is also a flag
+            let isFlag = index == args.count - 1 || args[index + 1].hasPrefix("--")
+            if isFlag {
+                // For flags without values, we'll use an empty string to indicate presence
+                argumentDict[key] = ""
+                currentKey = nil
+            } else {
+                currentKey = key
+            }
         } else if let key = currentKey {
             argumentDict[key] = argument
             currentKey = nil
         }
     }
-
+    
     return argumentDict
 }
 
-let argumentDict = parseArguments(CommandLine.arguments)
-
-let shouldListProcesses = argumentDict.keys.contains("list-sources")
-let sourceName = argumentDict["source"] ?? nil
-
-logger.debug("\(String(sourceName ?? "No source name provided."))")
-
 Task { @MainActor in
+    let argumentDict = parseArguments(CommandLine.arguments)
+    
+    let shouldListProcesses = argumentDict["list-sources"] != nil
+    let sourceName = argumentDict["source"] ?? nil
+    
     logger.debug("Initializing audio controllers...")
     let audioRecordingPermission = AudioRecordingPermission()
 
